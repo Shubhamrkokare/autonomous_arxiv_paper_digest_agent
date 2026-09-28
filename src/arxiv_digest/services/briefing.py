@@ -53,6 +53,9 @@ class BriefingService:
             "Write concisely: at most two sentences for text fields and at most three bullets for "
             "each list. Do not speculate about limitations: this system extracts author-stated "
             "caveats directly from the paper instead. "
+            "Do not include formulas or complexity notation. "
+            "Include numerical comparisons only when quoted exactly and clearly explained by "
+            "supplied evidence. "
             f"{availability_note}\n"
             "Return JSON only. Provide every field in the requested schema, and use short "
             "evidence-based bullets in list fields.\n\n"
@@ -62,6 +65,10 @@ class BriefingService:
             self._llm.generate_json(prompt, schema=BriefingAnalysis.model_json_schema())
         )
         analysis_data = analysis.model_dump()
+        analysis_data["why_it_matters"] = self._limit_sentences(analysis_data["why_it_matters"])
+        analysis_data["problem_statement"] = self._limit_sentences(
+            analysis_data["problem_statement"]
+        )
         for field_name in (
             "method_approach",
             "key_results_claims",
@@ -130,6 +137,13 @@ class BriefingService:
             selected.append(source)
             used_characters += len(source)
         return "\n".join(selected)
+
+    @staticmethod
+    def _limit_sentences(text: str, maximum: int = 2) -> str:
+        """Enforce the concise executive-briefing contract after generation."""
+
+        sentences = re.split(r"(?<=[.!?])\s+", text.strip())
+        return " ".join(sentences[:maximum])
 
     @staticmethod
     def _author_stated_limitations(chunks: list[TextChunk]) -> list[str]:

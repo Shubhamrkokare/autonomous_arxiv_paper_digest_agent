@@ -56,6 +56,11 @@ def test_build_topic_query_uses_explicit_all_fields_and_ignores_filler_words() -
     assert query == "all:kv AND all:cache AND all:compression AND all:llms"
 
 
+def test_build_topic_query_rejects_a_topic_with_only_filler_words() -> None:
+    with pytest.raises(ArxivRetrievalError, match="searchable research terms"):
+        build_topic_query("recent work on the")
+
+
 def test_topic_search_uses_a_fielded_relevance_query() -> None:
     client = FakeArxivClient([make_result()])
     service = ArxivService(client=client)

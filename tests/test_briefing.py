@@ -96,6 +96,25 @@ def test_briefing_extracts_only_author_caveats_for_limitations() -> None:
     ]
 
 
+def test_briefing_limits_generated_text_fields_to_two_sentences() -> None:
+    llm = FakeLLM(
+        [
+            {
+                "why_it_matters": "First. Second. Third.",
+                "problem_statement": "One. Two. Three.",
+                "method_approach": ["Method"],
+                "key_results_claims": ["Result"],
+                "suggested_follow_up_questions": ["Why?"],
+            }
+        ]
+    )
+
+    briefing = BriefingService(llm).generate_briefing(paper(), [])
+
+    assert briefing.why_it_matters == "First. Second."
+    assert briefing.problem_statement == "One. Two."
+
+
 def test_qa_refuses_weak_evidence_without_calling_the_llm() -> None:
     llm = FakeLLM([])
     service = BriefingService(llm)
@@ -181,3 +200,31 @@ def test_qa_normalizes_model_refusals_to_the_safe_message() -> None:
     assert response.answerable is False
     assert response.answer == INSUFFICIENT_EVIDENCE_MESSAGE
     assert response.citations == []
+
+
+def test_qa_refuses_an_answer_that_has_only_invented_citations() -> None:
+    llm = FakeLLM(
+        [
+            {
+                "answerable": True,
+                "answer": "Unsupported claim.",
+                "citations": [{"chunk_id": "invented", "page_number": 99, "section": "Fake"}],
+            }
+        ]
+    )
+    evidence = [
+        RetrievedChunk(
+            chunk_id="chunk-1",
+            paper_id="paper",
+            page_number=1,
+            section="Introduction",
+            text="Some paper evidence.",
+            word_count=3,
+            distance=0.2,
+        )
+    ]
+
+    response = BriefingService(llm).answer_question("Unsupported?", evidence, max_distance=0.8)
+
+    assert response.answerable is False
+    assert response.answer == INSUFFICIENT_EVIDENCE_MESSAGE

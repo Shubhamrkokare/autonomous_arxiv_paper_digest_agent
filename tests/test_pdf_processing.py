@@ -2,9 +2,15 @@ from pathlib import Path
 
 import httpx
 import pymupdf
+import pytest
 
 from arxiv_digest.models import ParseQuality
-from arxiv_digest.services.pdf_processing import download_pdf, extract_pages, save_parse_result
+from arxiv_digest.services.pdf_processing import (
+    PdfProcessingError,
+    download_pdf,
+    extract_pages,
+    save_parse_result,
+)
 
 
 def create_pdf(path: Path, text: str) -> None:
@@ -83,3 +89,43 @@ def test_extract_pages_records_section_headings_and_references(tmp_path: Path) -
     assert "References" in result.section_headings
     assert result.references_text is not None
     assert "[1] A reference entry." in result.references_text
+
+
+def test_download_pdf_rejects_non_pdf_response_and_cleans_partial_file(tmp_path: Path) -> None:
+    def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            content=b"<html>not a paper</html>",
+            headers={"content-type": "text/html"},
+        )
+
+    destination = tmp_path / "paper.pdf"
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(PdfProcessingError, match="not a PDF"):
+            download_pdf(
+                "https://arxiv.org/pdf/1234.5678",
+                destination,
+                max_size_bytes=1_000,
+                client=client,
+            )
+
+    assert not destination.exists()
+    assert not destination.with_suffix(".pdf.part").exists()
+
+
+def test_download_pdf_rejects_oversized_declared_file(tmp_path: Path) -> None:
+    def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            content=create_pdf_bytes("paper"),
+            headers={"content-type": "application/pdf", "content-length": "1001"},
+        )
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(PdfProcessingError, match="size limit"):
+            download_pdf(
+                "https://arxiv.org/pdf/1234.5678",
+                tmp_path / "paper.pdf",
+                max_size_bytes=1_000,
+                client=client,
+            )
