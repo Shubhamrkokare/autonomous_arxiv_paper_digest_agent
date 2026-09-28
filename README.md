@@ -2,6 +2,28 @@
 
 A local-first Python agent that accepts an arXiv ID, URL, or research topic, creates a structured executive briefing for one paper, and answers follow-up questions only from retrieved paper evidence.
 
+## Start here
+
+The application code is in [arxiv_digest/](arxiv_digest/), not hidden in a framework folder:
+
+```text
+arxiv_digest/
+├── cli.py                 # Commands: inspect, digest, qa
+├── graph.py               # LangGraph nodes, edges, and shared state
+├── models.py              # Typed data and session models
+└── services/
+    ├── arxiv_client.py    # arXiv lookup and topic search
+    ├── pdf_processing.py  # Safe PDF download and parsing
+    ├── chunker.py         # Section-aware text chunks
+    ├── vector_store.py    # Local embeddings and ChromaDB
+    └── briefing.py        # Briefing generation and grounded QA
+
+tests/                     # Automated test suite
+README.md                  # Setup, architecture, examples, and design decisions
+```
+
+For a quick review, open [graph.py](arxiv_digest/graph.py), then [briefing.py](arxiv_digest/services/briefing.py), and finally [cli.py](arxiv_digest/cli.py).
+
 ## Architecture
 
 ```mermaid

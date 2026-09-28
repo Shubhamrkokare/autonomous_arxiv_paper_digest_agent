@@ -34,11 +34,11 @@ dev = [
 arxiv-digest = "arxiv_digest.cli:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/arxiv_digest"]
+packages = ["arxiv_digest"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src"]
+pythonpath = ["."]
 
 [tool.ruff]
 line-length = 100
