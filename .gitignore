@@ -1,0 +1,22 @@
+# Python build and test artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+
+# Local environment and secrets
+.venv/
+.env
+
+# Runtime data: papers, parsed pages, vector collections, and sessions
+data/
+tmp/
+
+# Editor and operating-system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
