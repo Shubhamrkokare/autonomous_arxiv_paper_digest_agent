@@ -142,10 +142,6 @@ python -m pytest -q
 python -m ruff check .
 ```
 
-## Submission video and interview preparation
-
-Use [docs/INTERVIEW_GUIDE.md](docs/INTERVIEW_GUIDE.md) for the end-to-end explanation, architecture walkthrough, likely interview questions, and a four-minute demo outline.
-
 ## License
 
 MIT
