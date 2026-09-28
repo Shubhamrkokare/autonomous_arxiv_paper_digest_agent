@@ -68,3 +68,18 @@ def test_download_pdf_accepts_valid_pdf_bytes_and_persists_parse_result(tmp_path
     result = extract_pages(downloaded_path, min_characters=1)
     saved_path = save_parse_result(result, tmp_path / "pages.json")
     assert '"quality"' in saved_path.read_text(encoding="utf-8")
+
+
+def test_extract_pages_records_section_headings_and_references(tmp_path: Path) -> None:
+    pdf_path = tmp_path / "structured.pdf"
+    create_pdf(
+        pdf_path,
+        "1 Method\nThis is method text.\nReferences\n[1] A reference entry.",
+    )
+
+    result = extract_pages(pdf_path, min_characters=1)
+
+    assert "1 Method" in result.section_headings
+    assert "References" in result.section_headings
+    assert result.references_text is not None
+    assert "[1] A reference entry." in result.references_text

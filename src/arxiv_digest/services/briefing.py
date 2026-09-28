@@ -109,6 +109,8 @@ class BriefingService:
         response = QAResponse.model_validate(
             self._llm.generate_json(prompt, schema=QAResponse.model_json_schema())
         )
+        if not response.answerable:
+            return QAResponse(answerable=False, answer=INSUFFICIENT_EVIDENCE_MESSAGE)
         verified_citations = [
             allowed_citations[citation.chunk_id]
             for citation in response.citations
@@ -138,13 +140,19 @@ class BriefingService:
         arbitrary missing details as a limitation.
         """
 
-        cues = ("limitation", "future work", "we plan", "cannot", "unable")
+        direct_cues = ("future work", "we plan", "cannot", "unable")
+        own_work_cues = ("our ", "this approach", "this method", "the proposed")
         limitations: list[str] = []
         for chunk in chunks:
             sentences = re.split(r"(?<=[.!?])\s+", chunk.text.replace("\n", " "))
             for sentence in sentences:
                 normalized = sentence.strip()
-                if len(normalized) < 30 or not any(cue in normalized.lower() for cue in cues):
+                lowered = normalized.lower()
+                is_direct_caveat = any(cue in lowered for cue in direct_cues)
+                is_own_limitation = "limitation" in lowered and any(
+                    cue in lowered for cue in own_work_cues
+                )
+                if len(normalized) < 30 or not (is_direct_caveat or is_own_limitation):
                     continue
                 limitations.append(f"Author-stated caveat (p. {chunk.page_number}): {normalized}")
                 if len(limitations) == 3:

@@ -76,6 +76,8 @@ class ParseResult(BaseModel):
     pdf_path: Path
     quality: ParseQuality
     pages: list[ParsedPage] = Field(default_factory=list)
+    section_headings: list[str] = Field(default_factory=list)
+    references_text: str | None = None
     total_characters: int = Field(ge=0)
     warnings: list[str] = Field(default_factory=list)
 

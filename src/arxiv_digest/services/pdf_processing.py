@@ -1,11 +1,17 @@
 """Safe PDF download, page-aware extraction, and persisted parse artifacts."""
 
+import re
 from pathlib import Path
 
 import httpx
 import pymupdf
 
 from arxiv_digest.models import ParsedPage, ParseQuality, ParseResult
+
+SECTION_HEADING = re.compile(
+    r"^(?:(?:\d+(?:\.\d+)*)|(?:[IVXLC]+))\.?\s+[A-Z][A-Za-z0-9 ,:;()\-]{1,110}$"
+)
+REFERENCE_HEADING = re.compile(r"^(?:(?:\d+(?:\.\d+)*)\.?\s+)?references$", re.IGNORECASE)
 
 
 class PdfProcessingError(RuntimeError):
@@ -83,6 +89,7 @@ def extract_pages(pdf_path: Path, *, min_characters: int) -> ParseResult:
     finally:
         document.close()
 
+    section_headings, references_text = _extract_document_structure(pages)
     total_characters = sum(len(page.text) for page in pages)
     warnings: list[str] = []
     if blank_pages:
@@ -100,9 +107,36 @@ def extract_pages(pdf_path: Path, *, min_characters: int) -> ParseResult:
         pdf_path=pdf_path,
         quality=quality,
         pages=pages,
+        section_headings=section_headings,
+        references_text=references_text,
         total_characters=total_characters,
         warnings=warnings,
     )
+
+
+def _extract_document_structure(pages: list[ParsedPage]) -> tuple[list[str], str | None]:
+    """Identify headings and preserve the reference section as an inspectable artifact."""
+
+    headings: list[str] = []
+    reference_lines: list[str] = []
+    in_references = False
+
+    for page in pages:
+        for raw_line in page.text.splitlines():
+            line = " ".join(raw_line.split())
+            if not line:
+                continue
+            if REFERENCE_HEADING.fullmatch(line):
+                in_references = True
+                if line not in headings:
+                    headings.append(line)
+                continue
+            if SECTION_HEADING.fullmatch(line) and line not in headings:
+                headings.append(line)
+            if in_references:
+                reference_lines.append(line)
+
+    return headings, "\n".join(reference_lines) or None
 
 
 def save_parse_result(result: ParseResult, destination: Path) -> Path:

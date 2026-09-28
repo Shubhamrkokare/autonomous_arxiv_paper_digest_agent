@@ -56,23 +56,52 @@ arxiv-digest qa --session-id paper_1706_03762v7 "Which tasks were used for evalu
 
 `digest` prints the structured briefing and saves a local session. `qa` reloads that session, retrieves the closest chunks, and saves the updated conversation history.
 
-## Verified example
+## Verified end-to-end example
 
-The following was run locally with `qwen2.5:3b`, without an API key:
+The following topic-search run was executed locally with `qwen2.5:3b`, without an API key. It searched
+arXiv, ranked candidates, selected one paper, parsed its PDF, indexed its chunks, and saved a session.
 
 ```powershell
-arxiv-digest digest 1706.03762
-# Session saved: paper_1706_03762v7
+arxiv-digest digest "recent work on KV-cache compression for LLMs"
+```
 
-arxiv-digest qa --session-id paper_1706_03762v7 "Which translation tasks and datasets were used for evaluation?"
-# Answer: WMT 2014 English-to-German and English-to-French.
-# Citations: p. 8, "6.1 Machine Translation"; p. 7, "5.1 Training Data and Batching"
+The command printed this structured briefing (abridged only for README length; the CLI prints every
+required field in full):
 
-arxiv-digest qa --session-id paper_1706_03762v7 "What was the authors' office address?"
+```json
+{
+  "title": "HCAttention: Extreme KV Cache Compression via Heterogeneous Attention Computing for LLMs",
+  "authors": ["Dongquan Yang", "Yifan Yang", "Xiaotian Yu", "Xianbiao Qi", "Rong Xiao"],
+  "arxiv_id": "2507.19823v1",
+  "publish_date": "2025-07-26",
+  "link": "http://arxiv.org/abs/2507.19823v1",
+  "why_it_matters": "HCAttention reduces KV-cache memory and computation for long-context LLM inference.",
+  "problem_statement": "Long sequence lengths create substantial memory and computation overhead.",
+  "method_approach": [
+    "Combine key quantization with value offloading.",
+    "Approximate attention using grouped key centroids.",
+    "Use cumulative attention magnitude as an eviction criterion."
+  ],
+  "key_results_claims": ["Reports memory savings and lower computation while maintaining accuracy."],
+  "limitations": ["Author-stated caveat (p. 9): For future work, two main directions appear particularly promising."],
+  "suggested_follow_up_questions": ["How does quantization group size affect efficiency?"]
+}
+
+Session saved: paper_2507_19823v1
+```
+
+Two QA exchanges from that saved session:
+
+```powershell
+arxiv-digest qa --session-id paper_2507_19823v1 "Which two techniques does HCAttention combine to reduce KV-cache memory?"
+# Answer: key quantization and value offloading.
+# Citation: p. 2, "1 Introduction"
+
+arxiv-digest qa --session-id paper_2507_19823v1 "What is the authors' office address?"
 # I could not find sufficient evidence in the indexed content of this paper to answer that question.
 ```
 
-The first question demonstrates cited retrieval. The second demonstrates the required refusal behavior.
+The first question demonstrates cited retrieval. The second demonstrates deterministic refusal behavior.
 
 ## Grounding policy
 
@@ -99,6 +128,7 @@ The application, rather than the LLM alone, enforces grounding:
 
 - **LangGraph:** explicit nodes, edges, and shared state; more demonstrable than a hidden prompt chain.
 - **PyMuPDF:** fast page-aware extraction for citations; difficult layouts may need OCR in production.
+- **Parse artifacts:** `pages.json` persists page text, detected section headings, and `references_text`, so references are explicitly inspectable and searchable.
 - **ChromaDB + sentence-transformers:** persistent semantic search without cloud credentials; first use downloads embedding weights.
 - **Ollama:** free and local; requires model download and local compute.
 - **One paper per session:** avoids ambiguous QA; multi-paper comparison is out of scope.

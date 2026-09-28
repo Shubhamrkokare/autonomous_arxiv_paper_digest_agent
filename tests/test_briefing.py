@@ -150,3 +150,34 @@ def test_qa_keeps_only_citations_that_match_retrieved_evidence() -> None:
     assert response.answerable is True
     assert response.citations[0].page_number == 4
     assert response.citations[0].section == "Results"
+
+
+def test_qa_normalizes_model_refusals_to_the_safe_message() -> None:
+    llm = FakeLLM(
+        [
+            {
+                "answerable": False,
+                "answer": "The model's longer refusal must not be exposed.",
+                "citations": [],
+            }
+        ]
+    )
+    evidence = [
+        RetrievedChunk(
+            chunk_id="chunk-1",
+            paper_id="paper",
+            page_number=1,
+            section="Introduction",
+            text="Some paper evidence.",
+            word_count=3,
+            distance=0.2,
+        )
+    ]
+
+    response = BriefingService(llm).answer_question(
+        "What is the office address?", evidence, max_distance=0.8
+    )
+
+    assert response.answerable is False
+    assert response.answer == INSUFFICIENT_EVIDENCE_MESSAGE
+    assert response.citations == []
